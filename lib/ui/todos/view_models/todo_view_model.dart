@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../data/models/priority.dart';
@@ -38,14 +40,19 @@ enum TodoSort {
   final String label;
 }
 
+/// State for the to-do list: filters, sorting and derived counts.
+///
+/// Items come from [TodoRepository]; this rebuilds whenever it changes.
 class TodoViewModel extends ChangeNotifier {
   TodoViewModel(this._repository) {
+    _subscription = _repository.changes.listen((_) => notifyListeners());
     load();
   }
 
   final TodoRepository _repository;
+  late final StreamSubscription<void> _subscription;
 
-  List<Todo> _todos = [];
+  List<Todo> get _todos => _repository.todos;
   bool _isLoading = false;
   String? _error;
 
@@ -76,6 +83,14 @@ class TodoViewModel extends ChangeNotifier {
   int get doneCount => _todos.where((t) => t.isDone).length;
   bool get hasCompleted => doneCount > 0;
   double get progress => _todos.isEmpty ? 0 : doneCount / _todos.length;
+  int get progressPercent => (progress * 100).round();
+
+  /// One-line encouragement under the progress ring.
+  String get progressSummary => switch ((activeCount, completedTodayCount)) {
+    (0, _) => 'Everything’s done. Nice work.',
+    (_, 0) => '$activeCount to go — you’ve got this.',
+    (_, final c) => '$c finished today · $activeCount to go',
+  };
 
   int get overdueCount => _todos.where((t) => t.isOverdue(DateTime.now())).length;
 
@@ -206,7 +221,7 @@ class TodoViewModel extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      _todos = await _repository.fetchAll();
+      await _repository.load();
     } catch (e, st) {
       debugPrint('Failed to load to-dos: $e\n$st');
       _error = 'Could not load your to-dos.';
@@ -219,58 +234,50 @@ class TodoViewModel extends ChangeNotifier {
   Future<void> add(String title, {DateTime? dueDate, Priority priority = Priority.none}) async {
     final clean = title.trim();
     if (clean.isEmpty) return;
-    final todo = await _repository.create(clean, dueDate: dueDate, priority: priority);
-    _todos = [todo, ..._todos];
-    notifyListeners();
+    await _repository.create(clean, dueDate: dueDate, priority: priority);
   }
 
   Future<void> toggle(String id) async {
-    final index = _todos.indexWhere((t) => t.id == id);
-    if (index == -1) return;
-    final updated = _todos[index].toggled();
-    _todos = [..._todos]..[index] = updated;
-    notifyListeners();
-    await _repository.update(updated);
+    final todo = _find(id);
+    if (todo == null) return;
+    await _repository.update(todo.toggled());
   }
 
   Future<void> update(Todo todo) async {
-    final index = _todos.indexWhere((t) => t.id == todo.id);
-    if (index == -1) return;
-    final clean = todo.copyWith(
-      title: todo.title.trim(),
-      notes: todo.notes.trim(),
-      dueDate: () => todo.dueDate == null ? null : Todo.dayOf(todo.dueDate!),
+    if (_find(todo.id) == null) return;
+    await _repository.update(
+      todo.copyWith(
+        title: todo.title.trim(),
+        notes: todo.notes.trim(),
+        dueDate: () => todo.dueDate == null ? null : Todo.dayOf(todo.dueDate!),
+      ),
     );
-    _todos = [..._todos]..[index] = clean;
-    notifyListeners();
-    await _repository.update(clean);
   }
 
   /// Returns the removed item so the view can offer "Undo".
   Future<Todo?> delete(String id) async {
-    final index = _todos.indexWhere((t) => t.id == id);
-    if (index == -1) return null;
-    final removed = _todos[index];
-    _todos = [..._todos]..removeAt(index);
-    notifyListeners();
-    await _repository.delete(id);
-    return removed;
+    if (_find(id) == null) return null;
+    return _repository.delete(id);
   }
 
   /// Returns the removed items so the view can offer "Undo".
   Future<List<Todo>> clearCompleted() async {
-    final removed = _todos.where((t) => t.isDone).toList();
-    if (removed.isEmpty) return removed;
-    _todos = _todos.where((t) => !t.isDone).toList();
-    notifyListeners();
-    await _repository.deleteCompleted();
-    return removed;
+    if (!hasCompleted) return const [];
+    return _repository.deleteCompleted();
   }
 
-  Future<void> restore(List<Todo> items) async {
-    final ids = _todos.map((t) => t.id).toSet();
-    _todos = [...items.where((t) => !ids.contains(t.id)), ..._todos];
-    notifyListeners();
-    await _repository.restore(items);
+  Future<void> restore(List<Todo> items) => _repository.restore(items);
+
+  Todo? _find(String id) {
+    for (final t in _todos) {
+      if (t.id == id) return t;
+    }
+    return null;
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 }

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../data/models/priority.dart';
 import '../../../data/models/todo.dart';
+import '../view_models/todo_editor_view_model.dart';
 import 'due_dates.dart';
 
 /// What the user chose in the editor sheet.
@@ -58,42 +59,32 @@ class _TodoEditorSheet extends StatefulWidget {
 }
 
 class _TodoEditorSheetState extends State<_TodoEditorSheet> {
+  late final _vm = TodoEditorViewModel(widget.todo);
   late final _title = TextEditingController(text: widget.todo.title);
   late final _notes = TextEditingController(text: widget.todo.notes);
-  late DateTime? _due = widget.todo.dueDate;
-  late Priority _priority = widget.todo.priority;
-  late bool _done = widget.todo.isDone;
 
   @override
   void initState() {
     super.initState();
-    _title.addListener(() => setState(() {}));
+    _vm.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
+    _vm.dispose();
     _title.dispose();
     _notes.dispose();
     super.dispose();
   }
 
-  bool get _canSave => _title.text.trim().isNotEmpty;
-
   void _save() {
-    if (!_canSave) return;
-    var updated = widget.todo.copyWith(
-      title: _title.text,
-      notes: _notes.text,
-      dueDate: () => _due,
-      priority: _priority,
-    );
-    if (_done != widget.todo.isDone) updated = updated.toggled();
-    Navigator.pop(context, TodoEdited(updated));
+    final updated = _vm.result;
+    if (updated != null) Navigator.pop(context, TodoEdited(updated));
   }
 
   Future<void> _pickCustom() async {
-    final picked = await pickDueDate(context, _due);
-    if (picked != null) setState(() => _due = picked);
+    final picked = await pickDueDate(context, _vm.due);
+    if (picked != null) _vm.setDue(picked);
   }
 
   @override
@@ -101,8 +92,8 @@ class _TodoEditorSheetState extends State<_TodoEditorSheet> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final muted = scheme.onSurfaceVariant;
-    final preset = DuePreset.match(_due);
-    final isCustom = _due != null && preset == null;
+    final preset = _vm.duePreset;
+    final isCustom = _vm.hasCustomDue;
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -117,17 +108,18 @@ class _TodoEditorSheetState extends State<_TodoEditorSheet> {
                 Text('Edit task', style: theme.textTheme.titleMedium),
                 const Spacer(),
                 FilterChip(
-                  avatar: Icon(_done ? Icons.check_circle : Icons.radio_button_unchecked, size: 18),
+                  avatar: Icon(_vm.done ? Icons.check_circle : Icons.radio_button_unchecked, size: 18),
                   showCheckmark: false,
-                  label: Text(_done ? 'Completed' : 'Mark done'),
-                  selected: _done,
-                  onSelected: (v) => setState(() => _done = v),
+                  label: Text(_vm.done ? 'Completed' : 'Mark done'),
+                  selected: _vm.done,
+                  onSelected: _vm.setDone,
                 ),
               ],
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _title,
+              onChanged: _vm.setTitle,
               autofocus: true,
               textCapitalization: TextCapitalization.sentences,
               style: theme.textTheme.titleLarge,
@@ -144,6 +136,7 @@ class _TodoEditorSheetState extends State<_TodoEditorSheet> {
             const SizedBox(height: 8),
             TextField(
               controller: _notes,
+              onChanged: _vm.setNotes,
               minLines: 2,
               maxLines: 6,
               textCapitalization: TextCapitalization.sentences,
@@ -165,20 +158,20 @@ class _TodoEditorSheetState extends State<_TodoEditorSheet> {
                     label: Text(p.label),
                     selected: preset == p,
                     showCheckmark: false,
-                    onSelected: (_) => setState(() => _due = p.resolve()),
+                    onSelected: (_) => _vm.setDue(p.resolve()),
                   ),
                 ChoiceChip(
                   avatar: const Icon(Icons.edit_calendar_outlined, size: 16),
-                  label: Text(isCustom ? DateFormat('EEE, MMM d').format(_due!) : 'Pick date'),
+                  label: Text(isCustom ? DateFormat('EEE, MMM d').format(_vm.due!) : 'Pick date'),
                   selected: isCustom,
                   showCheckmark: false,
                   onSelected: (_) => _pickCustom(),
                 ),
                 ChoiceChip(
                   label: const Text('None'),
-                  selected: _due == null,
+                  selected: _vm.due == null,
                   showCheckmark: false,
-                  onSelected: (_) => setState(() => _due = null),
+                  onSelected: (_) => _vm.setDue(null),
                 ),
               ],
             ),
@@ -193,23 +186,16 @@ class _TodoEditorSheetState extends State<_TodoEditorSheet> {
                   ChoiceChip(
                     avatar: Icon(p == Priority.none ? Icons.outlined_flag : Icons.flag, size: 16, color: p.color),
                     label: Text(p == Priority.none ? 'None' : p.label),
-                    selected: _priority == p,
+                    selected: _vm.priority == p,
                     showCheckmark: false,
                     selectedColor: p.color.withValues(alpha: 0.16),
-                    side: BorderSide(color: _priority == p ? p.color.withValues(alpha: 0.6) : scheme.outlineVariant),
-                    onSelected: (_) => setState(() => _priority = p),
+                    side: BorderSide(color: _vm.priority == p ? p.color.withValues(alpha: 0.6) : scheme.outlineVariant),
+                    onSelected: (_) => _vm.setPriority(p),
                   ),
               ],
             ),
             const SizedBox(height: 16),
-            Text(
-              [
-                'Created ${DateFormat('MMM d, y').format(widget.todo.createdAt)}',
-                if (widget.todo.completedAt != null && widget.todo.isDone)
-                  'completed ${formatCompleted(widget.todo.completedAt!)}',
-              ].join(' · '),
-              style: theme.textTheme.labelSmall?.copyWith(color: muted),
-            ),
+            Text(_vm.historyLabel, style: theme.textTheme.labelSmall?.copyWith(color: muted)),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -222,7 +208,7 @@ class _TodoEditorSheetState extends State<_TodoEditorSheet> {
                 const Spacer(),
                 TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
                 const SizedBox(width: 8),
-                FilledButton(onPressed: _canSave ? _save : null, child: const Text('Save')),
+                FilledButton(onPressed: _vm.canSave ? _save : null, child: const Text('Save')),
               ],
             ),
           ],

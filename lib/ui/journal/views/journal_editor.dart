@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/router/app_router.dart';
@@ -27,7 +26,7 @@ class JournalEditor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (c) => JournalEditorViewModel(repository: c.read(), journal: c.read(), entryId: entryId)..init(),
+      create: (c) => JournalEditorViewModel(repository: c.read(), entryId: entryId)..init(),
       child: _EditorView(showBack: showBack),
     );
   }
@@ -43,21 +42,10 @@ class _EditorView extends StatefulWidget {
 }
 
 class _EditorViewState extends State<_EditorView> {
-  static const _prompts = [
-    'What’s on your mind today?',
-    'What made you smile today?',
-    'What drained your energy, and what restored it?',
-    'Describe a small moment you want to remember.',
-    'What are you looking forward to?',
-    'What would you tell yourself from this morning?',
-    'What did you learn today?',
-  ];
-
   final _title = TextEditingController();
   final _body = TextEditingController();
   final _gratitude = TextEditingController();
   bool _seeded = false;
-  int _promptIndex = DateTime.now().day % _prompts.length;
 
   @override
   void dispose() {
@@ -194,7 +182,7 @@ class _EditorViewState extends State<_EditorView> {
                         children: [
                           _MetaButton(
                             icon: Icons.calendar_today_outlined,
-                            label: _formatDate(vm.date),
+                            label: vm.dateLabel,
                             tooltip: 'Change the day this entry is about',
                             onTap: () => _pickDate(vm),
                           ),
@@ -234,7 +222,7 @@ class _EditorViewState extends State<_EditorView> {
                       _SectionLabel(
                         text: 'Entry',
                         trailing: TextButton.icon(
-                          onPressed: () => setState(() => _promptIndex = (_promptIndex + 1) % _prompts.length),
+                          onPressed: vm.nextPrompt,
                           icon: const Icon(Icons.auto_awesome_outlined, size: 15),
                           label: const Text('New prompt'),
                           style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
@@ -249,7 +237,7 @@ class _EditorViewState extends State<_EditorView> {
                         keyboardType: TextInputType.multiline,
                         textCapitalization: TextCapitalization.sentences,
                         style: theme.textTheme.bodyLarge?.copyWith(fontSize: 16, height: 1.75),
-                        decoration: _borderless.copyWith(hintText: _prompts[_promptIndex]),
+                        decoration: _borderless.copyWith(hintText: vm.prompt),
                       ),
                       const SizedBox(height: Space.xl),
                       _GratitudeCallout(controller: _gratitude, onChanged: vm.setGratitude),
@@ -257,7 +245,7 @@ class _EditorViewState extends State<_EditorView> {
                   ),
                 ),
               ),
-              _EditorFooter(wordCount: vm.wordCount, isEditing: vm.isEditing),
+              _EditorFooter(wordCount: vm.wordCount, readMinutes: vm.readMinutes, isEditing: vm.isEditing),
             ],
           ),
         ),
@@ -273,15 +261,6 @@ class _EditorViewState extends State<_EditorView> {
     isDense: true,
     contentPadding: EdgeInsets.zero,
   );
-
-  static String _formatDate(DateTime d) {
-    final now = DateTime.now();
-    if (DateUtils.isSameDay(d, now)) return 'Today, ${DateFormat('MMM d').format(d)}';
-    if (DateUtils.isSameDay(d, now.subtract(const Duration(days: 1)))) {
-      return 'Yesterday, ${DateFormat('MMM d').format(d)}';
-    }
-    return DateFormat('EEE, MMM d, y').format(d);
-  }
 }
 
 class _Toolbar extends StatelessWidget {
@@ -311,10 +290,7 @@ class _Toolbar extends StatelessWidget {
 
     return Container(
       height: 56,
-      padding: EdgeInsets.only(
-        left: showBack ? Space.xs : Space.lg,
-        right: vm.isEditing ? Space.sm : Space.md,
-      ),
+      padding: EdgeInsets.only(left: showBack ? Space.xs : Space.lg, right: vm.isEditing ? Space.sm : Space.md),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
       ),
@@ -332,7 +308,7 @@ class _Toolbar extends StatelessWidget {
           ],
           Expanded(
             child: Text(
-              vm.isEditing ? (vm.title.trim().isEmpty ? 'Untitled' : vm.title.trim()) : 'New entry',
+              vm.displayTitle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
@@ -519,9 +495,10 @@ class _GratitudeCallout extends StatelessWidget {
 }
 
 class _EditorFooter extends StatelessWidget {
-  const _EditorFooter({required this.wordCount, required this.isEditing});
+  const _EditorFooter({required this.wordCount, required this.readMinutes, required this.isEditing});
 
   final int wordCount;
+  final int readMinutes;
   final bool isEditing;
 
   @override
@@ -529,7 +506,6 @@ class _EditorFooter extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final style = theme.textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant);
-    final minutes = (wordCount / 200).ceil();
     final hint = isEditing ? 'Changes save automatically' : 'Ctrl/⌘ + S to save';
 
     return Container(
@@ -541,7 +517,7 @@ class _EditorFooter extends StatelessWidget {
       child: Row(
         children: [
           Text('$wordCount ${wordCount == 1 ? 'word' : 'words'}', style: style),
-          if (wordCount > 0) Text('  ·  $minutes min read', style: style),
+          if (wordCount > 0) Text('  ·  $readMinutes min read', style: style),
           const Spacer(),
           if (!WindowSize.of(context).isCompact) Text(hint, style: style),
         ],

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'ui/journal/view_models/journal_view_model.dart';
-import 'ui/settings/settings_view_model.dart';
+import 'ui/settings/view_models/settings_view_model.dart';
 import 'ui/todos/view_models/todo_view_model.dart';
 
 class App extends StatefulWidget {

@@ -16,8 +16,8 @@ void main() {
     // Dependency graph: Service -> Repositories -> (ViewModels, created in App).
     MultiProvider(
       providers: [
-        Provider(create: (_) => JournalRepository(storage)),
-        Provider(create: (_) => TodoRepository(storage)),
+        Provider(create: (_) => JournalRepository(storage), dispose: (_, r) => r.dispose()),
+        Provider(create: (_) => TodoRepository(storage), dispose: (_, r) => r.dispose()),
         Provider(create: (_) => SettingsRepository(storage)),
       ],
       child: const App(),

@@ -15,14 +15,6 @@ class TodoOverview extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final percent = (vm.progress * 100).round();
-
-    final subtitle = switch ((vm.activeCount, vm.completedTodayCount)) {
-      (0, _) => 'Everything’s done. Nice work.',
-      (_, 0) => '${vm.activeCount} to go — you’ve got this.',
-      (_, final c) => '$c finished today · ${vm.activeCount} to go',
-    };
-
     return Column(
       children: [
         Container(
@@ -53,7 +45,7 @@ class TodoOverview extends StatelessWidget {
                     ),
                     Center(
                       child: Text(
-                        '$percent%',
+                        '${vm.progressPercent}%',
                         style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
                       ),
                     ),
@@ -67,7 +59,10 @@ class TodoOverview extends StatelessWidget {
                   children: [
                     Text('${vm.doneCount} of ${vm.totalCount} done', style: theme.textTheme.titleMedium),
                     const SizedBox(height: 2),
-                    Text(subtitle, style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                    Text(
+                      vm.progressSummary,
+                      style: theme.textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
                   ],
                 ),
               ),
