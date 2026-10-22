@@ -117,7 +117,9 @@ class _EditorViewState extends State<_EditorView> {
     );
     if (!ok || !mounted) return;
     await vm.discardDraft();
-    _seedControllers(vm);
+    if (!mounted) return;
+    showToast(context, 'Draft discarded');
+    _close();
   }
 
   Future<void> _pickDate(JournalEditorViewModel vm) async {
