@@ -309,7 +309,10 @@ class _Toolbar extends StatelessWidget {
 
     return Container(
       height: 56,
-      padding: EdgeInsets.only(left: showBack ? Space.xs : Space.lg, right: Space.sm),
+      padding: EdgeInsets.only(
+        left: showBack ? Space.xs : Space.lg,
+        right: vm.isEditing ? Space.sm : Space.md,
+      ),
       decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: scheme.outlineVariant)),
       ),
@@ -325,7 +328,7 @@ class _Toolbar extends StatelessWidget {
               child: Icon(Icons.chevron_right, size: 16, color: scheme.outline),
             ),
           ],
-          Flexible(
+          Expanded(
             child: Text(
               vm.isEditing ? (vm.title.trim().isEmpty ? 'Untitled' : vm.title.trim()) : 'New entry',
               maxLines: 1,
@@ -333,7 +336,6 @@ class _Toolbar extends StatelessWidget {
               style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
-          const Spacer(),
           _StatusLabel(status: vm.status, compact: compact),
           if (vm.isEditing || vm.hasDraftContent)
             PopupMenuButton<String>(

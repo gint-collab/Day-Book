@@ -42,6 +42,12 @@ class _AppState extends State<App> {
           themeMode: context.select((SettingsViewModel s) => s.themeMode),
           themeAnimationDuration: const Duration(milliseconds: 250),
           routerConfig: _router,
+          // Tapping outside a text field dismisses the keyboard.
+          builder: (context, child) => GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: child,
+          ),
         ),
       ),
     );
