@@ -207,7 +207,8 @@ class TodoViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       _todos = await _repository.fetchAll();
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Failed to load to-dos: $e\n$st');
       _error = 'Could not load your to-dos.';
     } finally {
       _isLoading = false;

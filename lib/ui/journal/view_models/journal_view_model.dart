@@ -172,7 +172,8 @@ class JournalViewModel extends ChangeNotifier {
     try {
       _entries = await _repository.fetchAll();
       _hasDraft = await _repository.loadDraft() != null;
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('Failed to load journal entries: $e\n$st');
       _error = 'Could not load journal entries.';
     } finally {
       _isLoading = false;
