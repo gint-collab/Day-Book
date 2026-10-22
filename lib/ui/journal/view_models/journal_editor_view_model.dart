@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 
 import '../../../data/models/journal_draft.dart';
 import '../../../data/models/journal_entry.dart';
 import '../../../data/models/mood.dart';
 import '../../../data/repositories/journal_repository.dart';
-import 'journal_view_model.dart';
 
 enum SaveStatus { idle, pending, saving, saved, draftSaved }
 
@@ -16,13 +16,25 @@ enum SaveStatus { idle, pending, saving, saved, draftSaved }
 /// * New entries are kept as a draft (debounced) until the user saves, so
 ///   abandoned ideas don't litter the journal but work survives reloads.
 class JournalEditorViewModel extends ChangeNotifier {
-  JournalEditorViewModel({required this._repository, required this._journal, this.entryId});
+  JournalEditorViewModel({required this._repository, this.entryId});
 
   final JournalRepository _repository;
-  final JournalViewModel _journal;
   final String? entryId;
 
   static const _debounce = Duration(milliseconds: 700);
+
+  /// Writing prompts shown as the body's placeholder.
+  static const prompts = [
+    'What’s on your mind today?',
+    'What made you smile today?',
+    'What drained your energy, and what restored it?',
+    'Describe a small moment you want to remember.',
+    'What are you looking forward to?',
+    'What would you tell yourself from this morning?',
+    'What did you learn today?',
+  ];
+
+  int _promptIndex = DateTime.now().day % prompts.length;
 
   String _title = '';
   String _body = '';
@@ -52,6 +64,29 @@ class JournalEditorViewModel extends ChangeNotifier {
   DateTime get date => _date;
   int get wordCount => JournalEntry.countWords(_body);
 
+  /// Estimated reading time at 200 words a minute.
+  int get readMinutes => (wordCount / 200).ceil();
+
+  String get prompt => prompts[_promptIndex];
+
+  /// Breadcrumb title in the toolbar.
+  String get displayTitle {
+    if (!isEditing) return 'New entry';
+    final t = _title.trim();
+    return t.isEmpty ? 'Untitled' : t;
+  }
+
+  /// "Today, Mar 4", "Yesterday, Mar 3" or "Mon, Mar 2, 2026".
+  String get dateLabel {
+    final now = DateTime.now();
+    bool sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month && a.day == b.day;
+    if (sameDay(_date, now)) return 'Today, ${DateFormat('MMM d').format(_date)}';
+    if (sameDay(_date, now.subtract(const Duration(days: 1)))) {
+      return 'Yesterday, ${DateFormat('MMM d').format(_date)}';
+    }
+    return DateFormat('EEE, MMM d, y').format(_date);
+  }
+
   bool get canSave => _title.trim().isNotEmpty || _body.trim().isNotEmpty;
 
   /// The new-entry form has content worth keeping.
@@ -60,8 +95,8 @@ class JournalEditorViewModel extends ChangeNotifier {
   Future<void> init() async {
     if (isEditing) {
       // Deep links (e.g. reloading /journal/<id>) can arrive before the list loads.
-      await _journal.ready;
-      final existing = _journal.findById(entryId!);
+      await _repository.ready;
+      final existing = _repository.findById(entryId!);
       if (existing == null) {
         _notFound = true;
       } else {
@@ -119,6 +154,11 @@ class JournalEditorViewModel extends ChangeNotifier {
 
   void removeTag(String tag) => _update(() => _tags = _tags.where((t) => t != tag).toList());
 
+  void nextPrompt() {
+    _promptIndex = (_promptIndex + 1) % prompts.length;
+    _notify();
+  }
+
   void _update(VoidCallback change) {
     change();
     _status = SaveStatus.pending;
@@ -129,7 +169,6 @@ class JournalEditorViewModel extends ChangeNotifier {
 
   Future<void> _saveDraft() async {
     await _repository.saveDraft(_currentDraft());
-    await _journal.refreshDraftFlag();
     if (_status == SaveStatus.pending) {
       _status = SaveStatus.draftSaved;
       _notify();
@@ -149,9 +188,9 @@ class JournalEditorViewModel extends ChangeNotifier {
   }
 
   Future<JournalEntry?> _persistExisting() async {
-    final existing = _journal.findById(entryId!);
+    final existing = _repository.findById(entryId!);
     if (existing == null) return null;
-    final saved = await _repository.update(
+    return _repository.update(
       existing.copyWith(
         title: _title.trim(),
         body: _body.trim(),
@@ -161,8 +200,6 @@ class JournalEditorViewModel extends ChangeNotifier {
         createdAt: _date,
       ),
     );
-    _journal.upsert(saved);
-    return saved;
   }
 
   JournalDraft _currentDraft() =>
@@ -192,8 +229,6 @@ class JournalEditorViewModel extends ChangeNotifier {
         date: _date,
       );
       await _repository.clearDraft();
-      await _journal.refreshDraftFlag();
-      _journal.upsert(saved);
     }
 
     _status = SaveStatus.saved;
@@ -206,7 +241,6 @@ class JournalEditorViewModel extends ChangeNotifier {
     // Otherwise dispose() would commit it and write the draft back.
     _pendingTag = '';
     await _repository.clearDraft();
-    await _journal.refreshDraftFlag();
     _title = _body = _gratitude = '';
     _mood = null;
     _tags = [];
@@ -218,7 +252,7 @@ class JournalEditorViewModel extends ChangeNotifier {
 
   Future<void> delete() async {
     _timer?.cancel();
-    if (entryId != null) await _journal.delete(entryId!);
+    if (entryId != null) await _repository.delete(entryId!);
   }
 
   void _notify() {

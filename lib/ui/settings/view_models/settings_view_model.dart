@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../data/repositories/settings_repository.dart';
+import '../../../data/repositories/settings_repository.dart';
 
 /// App-wide preferences: light/dark theme and sidebar state.
 class SettingsViewModel extends ChangeNotifier {

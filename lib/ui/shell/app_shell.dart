@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/router/app_router.dart';
 import '../../core/theme/tokens.dart';
-import '../settings/settings_view_model.dart';
+import '../settings/view_models/settings_view_model.dart';
 import 'sidebar.dart';
 
 /// Top-level frame around the two sections.

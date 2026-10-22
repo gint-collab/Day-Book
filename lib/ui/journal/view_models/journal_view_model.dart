@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
@@ -9,26 +11,26 @@ import '../../../data/repositories/journal_repository.dart';
 typedef EntryGroup = ({String label, List<JournalEntry> entries});
 
 /// State for the journal list: entries, search/filter, and derived stats.
+///
+/// Entries come from [JournalRepository]; this rebuilds whenever it changes.
 class JournalViewModel extends ChangeNotifier {
   JournalViewModel(this._repository) {
-    _initialLoad = load();
+    _subscription = _repository.changes.listen((_) => notifyListeners());
+    load();
   }
 
   final JournalRepository _repository;
-  late final Future<void> _initialLoad;
+  late final StreamSubscription<void> _subscription;
 
-  /// Completes once entries have been loaded for the first time.
-  Future<void> get ready => _initialLoad;
-
-  List<JournalEntry> _entries = [];
   bool _isLoading = false;
   String? _error;
   String _query = '';
   Mood? _moodFilter;
   String? _tagFilter;
-  bool _hasDraft = false;
 
-  List<JournalEntry> get entries => List.unmodifiable(_entries);
+  List<JournalEntry> get _entries => _repository.entries;
+
+  List<JournalEntry> get entries => _entries;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isEmpty => _entries.isEmpty;
@@ -36,7 +38,7 @@ class JournalViewModel extends ChangeNotifier {
   Mood? get moodFilter => _moodFilter;
   String? get tagFilter => _tagFilter;
   bool get isFiltering => _query.isNotEmpty || _moodFilter != null || _tagFilter != null;
-  bool get hasDraft => _hasDraft;
+  bool get hasDraft => _repository.hasDraft;
 
   // ---- Derived: filtering & grouping ---------------------------------------
 
@@ -134,13 +136,6 @@ class JournalViewModel extends ChangeNotifier {
 
   // ---- Commands -------------------------------------------------------------
 
-  JournalEntry? findById(String id) {
-    for (final e in _entries) {
-      if (e.id == id) return e;
-    }
-    return null;
-  }
-
   void setQuery(String value) {
     final q = value.trim();
     if (q == _query) return;
@@ -170,8 +165,7 @@ class JournalViewModel extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      _entries = await _repository.fetchAll();
-      _hasDraft = await _repository.loadDraft() != null;
+      await _repository.load();
     } catch (e, st) {
       debugPrint('Failed to load journal entries: $e\n$st');
       _error = 'Could not load journal entries.';
@@ -181,28 +175,10 @@ class JournalViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> refreshDraftFlag() async {
-    final has = await _repository.loadDraft() != null;
-    if (has != _hasDraft) {
-      _hasDraft = has;
-      notifyListeners();
-    }
-  }
-
-  /// Inserts or replaces [entry] in memory, keeping newest-first order.
-  void upsert(JournalEntry entry) {
-    _entries = [
-      for (final e in _entries)
-        if (e.id != entry.id) e,
-      entry,
-    ]..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-    notifyListeners();
-  }
-
-  Future<void> delete(String id) async {
-    _entries = _entries.where((e) => e.id != id).toList();
-    notifyListeners();
-    await _repository.delete(id);
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
   }
 
   static DateTime _dayOf(DateTime d) => DateTime(d.year, d.month, d.day);

@@ -7,7 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/tokens.dart';
 import '../core/widgets/app_logo.dart';
 import '../journal/view_models/journal_view_model.dart';
-import '../settings/settings_view_model.dart';
+import '../settings/view_models/settings_view_model.dart';
 import '../todos/view_models/todo_view_model.dart';
 
 /// Evernote-style dark navigation sidebar.

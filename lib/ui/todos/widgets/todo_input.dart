@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/tokens.dart';
 
 import '../../../data/models/priority.dart';
+import '../view_models/todo_composer_view_model.dart';
 import 'due_dates.dart';
 import 'option_pill.dart';
 
@@ -24,46 +25,41 @@ class TodoInput extends StatefulWidget {
 }
 
 class _TodoInputState extends State<TodoInput> {
+  final _vm = TodoComposerViewModel();
   final _controller = TextEditingController();
   late final FocusNode _focusNode = widget.focusNode ?? FocusNode();
-  DateTime? _due;
-  Priority _priority = Priority.none;
 
   @override
   void initState() {
     super.initState();
-    _controller.addListener(() => setState(() {}));
+    _vm.addListener(() => setState(() {}));
     _focusNode.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
+    _vm.dispose();
     _controller.dispose();
     if (widget.focusNode == null) _focusNode.dispose();
     super.dispose();
   }
 
-  bool get _canSubmit => _controller.text.trim().isNotEmpty;
-
   void _submit() {
-    if (!_canSubmit) return;
-    widget.onSubmitted(_controller.text, dueDate: _due, priority: _priority);
+    if (!_vm.canSubmit) return;
+    widget.onSubmitted(_vm.title, dueDate: _vm.due, priority: _vm.priority);
     _controller.clear();
-    setState(() {
-      _due = null;
-      _priority = Priority.none;
-    });
+    _vm.reset();
     _focusNode.requestFocus();
   }
 
   Future<void> _onDueSelected(Object choice) async {
     final DateTime? next = switch (choice) {
       DuePreset p => p.resolve(),
-      'pick' => await pickDueDate(context, _due),
+      'pick' => await pickDueDate(context, _vm.due),
       _ => null,
     };
     if (choice == 'pick' && next == null) return; // picker cancelled
-    setState(() => _due = next);
+    _vm.setDue(next);
     _focusNode.requestFocus();
   }
 
@@ -71,7 +67,7 @@ class _TodoInputState extends State<TodoInput> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final active = _focusNode.hasFocus || _canSubmit;
+    final active = _focusNode.hasFocus || _vm.canSubmit;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 180),
@@ -98,6 +94,7 @@ class _TodoInputState extends State<TodoInput> {
                   key: TodoInput.fieldKey,
                   controller: _controller,
                   focusNode: _focusNode,
+                  onChanged: _vm.setTitle,
                   textInputAction: TextInputAction.done,
                   onSubmitted: (_) => _submit(),
                   style: theme.textTheme.bodyLarge,
@@ -115,7 +112,7 @@ class _TodoInputState extends State<TodoInput> {
               const SizedBox(width: 8),
               IconButton.filled(
                 tooltip: 'Add task',
-                onPressed: _canSubmit ? _submit : null,
+                onPressed: _vm.canSubmit ? _submit : null,
                 icon: const Icon(Icons.arrow_upward, size: 20),
               ),
             ],
@@ -139,7 +136,7 @@ class _TodoInputState extends State<TodoInput> {
                       value: 'pick',
                       child: _MenuRow(icon: Icons.edit_calendar_outlined, label: 'Pick a date…'),
                     ),
-                    if (_due != null) ...[
+                    if (_vm.due != null) ...[
                       const PopupMenuDivider(),
                       const PopupMenuItem(
                         value: 'clear',
@@ -149,14 +146,14 @@ class _TodoInputState extends State<TodoInput> {
                   ],
                   child: OptionPill(
                     icon: Icons.event_outlined,
-                    label: _due == null ? 'Due date' : formatDue(_due!),
-                    color: _due == null ? null : scheme.primary,
+                    label: _vm.due == null ? 'Due date' : formatDue(_vm.due!),
+                    color: _vm.due == null ? null : scheme.primary,
                   ),
                 ),
                 PopupMenuButton<Priority>(
                   tooltip: 'Priority',
                   onSelected: (p) {
-                    setState(() => _priority = p);
+                    _vm.setPriority(p);
                     _focusNode.requestFocus();
                   },
                   itemBuilder: (_) => [
@@ -167,14 +164,14 @@ class _TodoInputState extends State<TodoInput> {
                           icon: p == Priority.none ? Icons.outlined_flag : Icons.flag,
                           label: p.label,
                           color: p.color,
-                          selected: p == _priority,
+                          selected: p == _vm.priority,
                         ),
                       ),
                   ],
                   child: OptionPill(
-                    icon: _priority == Priority.none ? Icons.outlined_flag : Icons.flag,
-                    label: _priority == Priority.none ? 'Priority' : _priority.label,
-                    color: _priority == Priority.none ? null : _priority.color,
+                    icon: _vm.priority == Priority.none ? Icons.outlined_flag : Icons.flag,
+                    label: _vm.priority == Priority.none ? 'Priority' : _vm.priority.label,
+                    color: _vm.priority == Priority.none ? null : _vm.priority.color,
                   ),
                 ),
               ],
