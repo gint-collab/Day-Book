@@ -203,6 +203,8 @@ class JournalEditorViewModel extends ChangeNotifier {
 
   Future<void> discardDraft() async {
     _timer?.cancel();
+    // Otherwise dispose() would commit it and write the draft back.
+    _pendingTag = '';
     await _repository.clearDraft();
     await _journal.refreshDraftFlag();
     _title = _body = _gratitude = '';
