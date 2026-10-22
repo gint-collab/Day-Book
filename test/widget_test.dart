@@ -11,6 +11,7 @@ import 'package:daybook/data/services/local_storage_service.dart';
 import 'package:daybook/ui/core/widgets/chip_scroller.dart';
 import 'package:daybook/ui/core/widgets/theme_toggle_button.dart';
 import 'package:daybook/ui/journal/widgets/journal_entry_card.dart';
+import 'package:daybook/ui/shell/glass_tab_bar.dart';
 import 'package:daybook/ui/todos/view_models/todo_view_model.dart';
 import 'package:daybook/ui/todos/widgets/todo_input.dart';
 import 'package:provider/provider.dart';
@@ -83,9 +84,10 @@ void main() {
   });
 
   group('responsive shell', () {
-    testWidgets('phone: bottom navigation, no sidebar', (tester) async {
+    testWidgets('phone: floating glass tab bar, no sidebar', (tester) async {
       await pumpApp(tester, const Size(390, 844));
-      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.byType(GlassTabBar), findsOneWidget);
+      expect(find.byType(NavigationBar), findsNothing);
       expect(find.text('Daybook'), findsNothing);
       expect(tester.takeException(), isNull);
     });

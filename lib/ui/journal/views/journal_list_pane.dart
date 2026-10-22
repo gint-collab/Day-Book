@@ -80,7 +80,9 @@ class _JournalListPaneState extends State<JournalListPane> {
         ),
       ),
       ..._body(context, vm, gutter),
-      SliverToBoxAdapter(child: SizedBox(height: showFab ? 96 : Space.xl)),
+      // The bottom inset lives here rather than in SafeArea so content can
+      // scroll beneath a floating navigation bar.
+      SliverToBoxAdapter(child: SizedBox(height: (showFab ? 96 : Space.xl) + MediaQuery.paddingOf(context).bottom)),
     ];
 
     return Scaffold(
@@ -93,6 +95,7 @@ class _JournalListPaneState extends State<JournalListPane> {
             )
           : null,
       body: SafeArea(
+        bottom: false,
         child: ContentFrame(
           maxWidth: inSplit ? double.infinity : 760,
           child: CustomScrollView(key: const PageStorageKey('journal-list'), slivers: slivers),

@@ -101,7 +101,10 @@ class _TodoScreenState extends State<TodoScreen> {
     final gutter = size.gutter;
 
     return Scaffold(
+      // The bottom inset is applied inside the scroll view so content can
+      // scroll beneath a floating navigation bar.
       body: SafeArea(
+        bottom: false,
         child: ContentFrame(
           maxWidth: 800,
           child: CustomScrollView(
@@ -138,6 +141,7 @@ class _TodoScreenState extends State<TodoScreen> {
                 ),
               ),
               ..._buildBody(vm, gutter),
+              SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom)),
             ],
           ),
         ),
