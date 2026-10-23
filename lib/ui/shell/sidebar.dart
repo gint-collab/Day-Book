@@ -114,6 +114,12 @@ class Sidebar extends StatelessWidget {
                   collapsed: collapsed,
                   onTap: () => settings.toggleTheme(platform),
                 ),
+                _SidebarItem(
+                  icon: Icons.info_outline,
+                  label: 'About Dayloom',
+                  collapsed: collapsed,
+                  onTap: () => context.push(Routes.about),
+                ),
                 if (canCollapse)
                   _SidebarItem(
                     icon: collapsed ? Icons.keyboard_double_arrow_right : Icons.keyboard_double_arrow_left,

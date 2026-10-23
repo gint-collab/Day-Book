@@ -6,6 +6,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../data/models/priority.dart';
 import '../../../data/models/todo.dart';
+import '../../core/widgets/about_button.dart';
 import '../../core/widgets/chip_scroller.dart';
 import '../../core/widgets/content_frame.dart';
 import '../../core/widgets/dialogs.dart';
@@ -129,7 +130,7 @@ class _TodoScreenState extends State<TodoScreen> {
                             PopupMenuItem(value: 'clear', child: Text('Clear ${vm.doneCount} completed')),
                           ],
                         ),
-                      if (size.isCompact) const ThemeToggleButton(),
+                      if (size.isCompact) ...const [ThemeToggleButton(), AboutButton()],
                     ],
                   ),
                 ),
