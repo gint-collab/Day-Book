@@ -110,6 +110,31 @@ void main() {
     });
   });
 
+  group('about page', () {
+    testWidgets('desktop: opens from the sidebar and goes back', (tester) async {
+      await pumpApp(tester, const Size(1400, 900));
+      await tester.tap(find.text('About Dayloom'));
+      await tester.pumpAndSettle();
+      expect(find.text('HOW YOUR DATA IS SAVED'), findsOneWidget);
+      expect(find.text('This device'), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('Start your journal'), findsOneWidget);
+    });
+
+    testWidgets('phone: opens from the header and lays out without overflow', (tester) async {
+      await pumpApp(tester, const Size(360, 740));
+      await tester.tap(find.byTooltip('About Dayloom'));
+      await tester.pumpAndSettle();
+      expect(find.byType(GlassTabBar), findsNothing);
+
+      await tester.scrollUntilVisible(find.text('Open-source licenses'), 300);
+      expect(find.text('PRIVACY & SECURITY'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   testWidgets('theme toggle switches between light and dark', (tester) async {
     await pumpApp(tester, const Size(390, 844));
     final before = currentBrightness(tester);

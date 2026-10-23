@@ -6,6 +6,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../data/models/mood.dart';
+import '../../core/widgets/about_button.dart';
 import '../../core/widgets/chip_scroller.dart';
 import '../../core/widgets/content_frame.dart';
 import '../../core/widgets/empty_state.dart';
@@ -68,7 +69,7 @@ class _JournalListPaneState extends State<JournalListPane> {
                 ? 'Your private space to write'
                 : '${vm.entries.length} ${vm.entries.length == 1 ? 'entry' : 'entries'}',
             actions: [
-              if (size.isCompact) const ThemeToggleButton(),
+              if (size.isCompact) ...const [ThemeToggleButton(), AboutButton()],
               if (inSplit && !vm.isEmpty)
                 IconButton.filledTonal(
                   tooltip: 'New entry',

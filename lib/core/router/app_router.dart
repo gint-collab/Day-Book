@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../ui/about/views/about_screen.dart';
 import '../../ui/journal/views/journal_workspace.dart';
 import '../../ui/shell/app_shell.dart';
 import '../../ui/todos/views/todo_screen.dart';
@@ -13,6 +14,9 @@ abstract final class Routes {
 
   /// Opens the to-do list with the quick-add field focused.
   static const todosCompose = '/todos?compose=1';
+
+  /// Full-screen page pushed over the shell; open it with `context.push`.
+  static const about = '/about';
 
   /// True when [path] shows a single journal entry (new or existing).
   static bool isJournalEditor(String path) => path.startsWith('$journal/');
@@ -59,5 +63,6 @@ GoRouter createRouter() => GoRouter(
         ),
       ],
     ),
+    GoRoute(path: Routes.about, builder: (context, state) => const AboutScreen()),
   ],
 );
