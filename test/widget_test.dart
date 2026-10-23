@@ -88,24 +88,24 @@ void main() {
       await pumpApp(tester, const Size(390, 844));
       expect(find.byType(GlassTabBar), findsOneWidget);
       expect(find.byType(NavigationBar), findsNothing);
-      expect(find.text('Daybook'), findsNothing);
+      expect(find.text('Dayloom'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('tablet: icon rail without labels', (tester) async {
       await pumpApp(tester, const Size(900, 1000));
       expect(find.byType(NavigationBar), findsNothing);
-      expect(find.text('Daybook'), findsNothing);
+      expect(find.text('Dayloom'), findsNothing);
       expect(find.byTooltip('Journal'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('desktop: full sidebar that collapses', (tester) async {
       await pumpApp(tester, const Size(1400, 900));
-      expect(find.text('Daybook'), findsOneWidget);
+      expect(find.text('Dayloom'), findsOneWidget);
       await tester.tap(find.text('Collapse sidebar'));
       await tester.pumpAndSettle();
-      expect(find.text('Daybook'), findsNothing);
+      expect(find.text('Dayloom'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

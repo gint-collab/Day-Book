@@ -35,7 +35,7 @@ class _AppState extends State<App> {
       ],
       child: Builder(
         builder: (context) => MaterialApp.router(
-          title: 'Daybook',
+          title: 'Dayloom',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
