@@ -151,7 +151,7 @@ class _Brand extends StatelessWidget {
               const SizedBox(width: Space.md),
               Expanded(
                 child: Text(
-                  'Daybook',
+                  'Dayloom',
                   maxLines: 1,
                   overflow: TextOverflow.clip,
                   softWrap: false,

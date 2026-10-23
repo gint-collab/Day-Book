@@ -1,6 +1,6 @@
 {
-    "name": "daybook",
-    "short_name": "daybook",
+    "name": "Dayloom",
+    "short_name": "Dayloom",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#4CAF50",

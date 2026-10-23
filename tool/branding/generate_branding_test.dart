@@ -1,4 +1,4 @@
-// Renders the Daybook app icon, splash logo and wordmark to PNGs in
+// Renders the Dayloom app icon, splash logo and wordmark to PNGs in
 // assets/branding/. The design follows design/reference/app-icon.jpg (a green
 // spiral notebook with a "d"), redrawn here so it stays sharp at any size.
 // Run from the project root with:
@@ -142,7 +142,7 @@ Future<void> _write(
 Future<void> _writeWordmark(String name, Color color) async {
   final painter = TextPainter(
     text: TextSpan(
-      text: 'Daybook',
+      text: 'Dayloom',
       style: TextStyle(
         fontFamily: 'Inter',
         fontWeight: FontWeight.w700,
