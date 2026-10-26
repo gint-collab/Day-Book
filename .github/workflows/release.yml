@@ -1,0 +1,96 @@
+# Builds a signed Android APK and App Bundle.
+#
+# - Push a tag like v1.2.0 to publish a GitHub Release with both files attached.
+# - Run it manually from the Actions tab to get the files as a workflow artifact
+#   without publishing a release.
+#
+# Needs four repository secrets (Settings > Secrets and variables > Actions):
+#   ANDROID_KEYSTORE_BASE64  the upload keystore (.jks), base64-encoded
+#   ANDROID_KEYSTORE_PASSWORD
+#   ANDROID_KEY_ALIAS
+#   ANDROID_KEY_PASSWORD
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.7
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter test
+
+      - name: Write signing config
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # Refuse to build rather than silently ship a debug-signed release.
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Android signing secrets are missing. See 'Release builds' in the README."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload-keystore.jks"
+          cat > android/key.properties <<EOF
+          storeFile=$RUNNER_TEMP/upload-keystore.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+
+      - name: Pick version
+        id: version
+        run: |
+          # A tag v1.2.0 becomes versionName 1.2.0. Manual runs keep the pubspec
+          # version. The run number always increases, so it works as versionCode.
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            echo "args=--build-name=${GITHUB_REF_NAME#v} --build-number=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+          else
+            echo "args=--build-number=$GITHUB_RUN_NUMBER" >> "$GITHUB_OUTPUT"
+          fi
+
+      - run: flutter build apk --release ${{ steps.version.outputs.args }}
+      - run: flutter build appbundle --release ${{ steps.version.outputs.args }}
+
+      - name: Collect outputs
+        run: |
+          mkdir dist
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/dayloom-${GITHUB_REF_NAME}.apk"
+          cp build/app/outputs/bundle/release/app-release.aab "dist/dayloom-${GITHUB_REF_NAME}.aab"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dayloom-android
+          path: dist/
+
+      - name: Publish GitHub Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --title "Dayloom $GITHUB_REF_NAME" --generate-notes
+
+      - name: Remove signing files
+        if: always()
+        run: rm -f android/key.properties "$RUNNER_TEMP/upload-keystore.jks"
