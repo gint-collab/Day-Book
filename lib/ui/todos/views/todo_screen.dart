@@ -6,6 +6,7 @@ import '../../../core/router/app_router.dart';
 import '../../../core/theme/tokens.dart';
 import '../../../data/models/priority.dart';
 import '../../../data/models/todo.dart';
+import '../../../data/models/todo_list_style.dart';
 import '../../core/widgets/about_button.dart';
 import '../../core/widgets/chip_scroller.dart';
 import '../../core/widgets/content_frame.dart';
@@ -13,7 +14,9 @@ import '../../core/widgets/dialogs.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/page_header.dart';
 import '../../core/widgets/theme_toggle_button.dart';
+import '../../settings/view_models/settings_view_model.dart';
 import '../view_models/todo_view_model.dart';
+import '../widgets/simple_todo.dart';
 import '../widgets/todo_editor_sheet.dart';
 import '../widgets/todo_input.dart';
 import '../widgets/todo_overview.dart';
@@ -98,6 +101,7 @@ class _TodoScreenState extends State<TodoScreen> {
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<TodoViewModel>();
+    final simple = context.select((SettingsViewModel s) => s.todoListStyle) == TodoListStyle.simple;
     final size = WindowSize.of(context);
     final gutter = size.gutter;
 
@@ -120,7 +124,8 @@ class _TodoScreenState extends State<TodoScreen> {
                         ? 'Capture what needs doing'
                         : '${vm.activeCount} active · ${vm.doneCount} done',
                     actions: [
-                      if (!vm.isEmpty) _SortMenu(vm: vm),
+                      const _ListStyleButton(),
+                      if (!simple && !vm.isEmpty) _SortMenu(vm: vm),
                       if (vm.hasCompleted)
                         PopupMenuButton<String>(
                           tooltip: 'More',
@@ -138,10 +143,12 @@ class _TodoScreenState extends State<TodoScreen> {
               SliverPadding(
                 padding: EdgeInsets.fromLTRB(gutter, Space.lg, gutter, 0),
                 sliver: SliverToBoxAdapter(
-                  child: TodoInput(onSubmitted: vm.add, focusNode: _composerFocus),
+                  child: simple
+                      ? SimpleTodoInput(onSubmitted: vm.add, focusNode: _composerFocus)
+                      : TodoInput(onSubmitted: vm.add, focusNode: _composerFocus),
                 ),
               ),
-              ..._buildBody(vm, gutter),
+              ..._buildBody(vm, gutter, simple: simple),
               SliverToBoxAdapter(child: SizedBox(height: MediaQuery.paddingOf(context).bottom)),
             ],
           ),
@@ -150,7 +157,7 @@ class _TodoScreenState extends State<TodoScreen> {
     );
   }
 
-  List<Widget> _buildBody(TodoViewModel vm, double gutter) {
+  List<Widget> _buildBody(TodoViewModel vm, double gutter, {required bool simple}) {
     if (vm.isLoading && vm.isEmpty) {
       return const [SliverFillRemaining(child: Center(child: CircularProgressIndicator()))];
     }
@@ -169,6 +176,7 @@ class _TodoScreenState extends State<TodoScreen> {
         ),
       ];
     }
+    if (simple) return _checklist(vm, gutter);
 
     final active = vm.visibleActive;
     final done = vm.visibleDone;
@@ -245,6 +253,27 @@ class _TodoScreenState extends State<TodoScreen> {
     );
   }
 
+  List<Widget> _checklist(TodoViewModel vm, double gutter) {
+    final todos = vm.checklist;
+    return [
+      SliverPadding(
+        padding: EdgeInsets.fromLTRB(gutter - Space.sm, Space.md, gutter - Space.sm, Space.xxxl),
+        sliver: SliverList.builder(
+          itemCount: todos.length,
+          itemBuilder: (context, i) {
+            final todo = todos[i];
+            return SimpleTodoTile(
+              key: ValueKey(todo.id),
+              todo: todo,
+              onToggle: () => vm.toggle(todo.id),
+              onDelete: () => _delete(vm, todo),
+            );
+          },
+        ),
+      ),
+    ];
+  }
+
   Widget _noResults(TodoViewModel vm) {
     if (vm.isFiltering) {
       return EmptyState(
@@ -266,6 +295,23 @@ class _TodoScreenState extends State<TodoScreen> {
         message: 'No active tasks. Enjoy the quiet.',
       ),
     };
+  }
+}
+
+/// Switches between the detailed planner and the simple checklist. The
+/// choice is saved with the other settings.
+class _ListStyleButton extends StatelessWidget {
+  const _ListStyleButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = context.watch<SettingsViewModel>();
+    final simple = settings.todoListStyle == TodoListStyle.simple;
+    return IconButton(
+      tooltip: simple ? 'Switch to detailed list' : 'Switch to simple list',
+      onPressed: () => settings.setTodoListStyle(simple ? TodoListStyle.detailed : TodoListStyle.simple),
+      icon: Icon(simple ? Icons.view_agenda_outlined : Icons.checklist, size: 20),
+    );
   }
 }
 

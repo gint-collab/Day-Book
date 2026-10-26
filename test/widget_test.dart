@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:daybook/app.dart';
 import 'package:daybook/data/models/journal_entry.dart';
 import 'package:daybook/data/models/priority.dart';
+import 'package:daybook/data/models/todo_list_style.dart';
 import 'package:daybook/data/repositories/journal_repository.dart';
 import 'package:daybook/data/repositories/settings_repository.dart';
 import 'package:daybook/data/repositories/todo_repository.dart';
@@ -13,6 +14,7 @@ import 'package:daybook/ui/core/widgets/theme_toggle_button.dart';
 import 'package:daybook/ui/journal/widgets/journal_entry_card.dart';
 import 'package:daybook/ui/shell/glass_tab_bar.dart';
 import 'package:daybook/ui/todos/view_models/todo_view_model.dart';
+import 'package:daybook/ui/todos/widgets/simple_todo.dart';
 import 'package:daybook/ui/todos/widgets/todo_input.dart';
 import 'package:provider/provider.dart';
 
@@ -274,6 +276,30 @@ void main() {
     );
     expect(find.text('Finished thing'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('to-do list style: detailed by default, simple choice persists', (tester) async {
+    final storage = FakeStorage();
+    final repo = TodoRepository(storage);
+    await repo.create('Water plants', priority: Priority.high);
+
+    await pumpApp(tester, const Size(1400, 900), storage: storage, todos: repo);
+    await tester.tap(find.text('To-dos').first);
+    await tester.pumpAndSettle();
+    expect(find.byKey(TodoInput.fieldKey), findsOneWidget);
+    expect(find.byKey(SimpleTodoInput.fieldKey), findsNothing);
+
+    await tester.tap(find.byTooltip('Switch to simple list'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(SimpleTodoInput.fieldKey), findsOneWidget);
+    expect(find.byType(SimpleTodoTile), findsOneWidget);
+
+    await tester.tap(find.byType(Checkbox));
+    await tester.pumpAndSettle();
+    expect(repo.todos.single.isDone, isTrue);
+
+    final saved = await SettingsRepository(storage).load();
+    expect(saved.todoListStyle, TodoListStyle.simple);
   });
 
   group('TodoViewModel', () {
