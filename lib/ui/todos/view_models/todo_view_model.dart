@@ -125,6 +125,16 @@ class TodoViewModel extends ChangeNotifier {
 
   bool get hasVisible => visibleActive.isNotEmpty || visibleDone.isNotEmpty;
 
+  /// Every task for the simple checklist, ignoring filters and sorting:
+  /// open tasks newest first, then completed ones.
+  List<Todo> get checklist {
+    int byNewest(Todo a, Todo b) => b.createdAt.compareTo(a.createdAt);
+    return [
+      ..._todos.where((t) => !t.isDone).toList()..sort(byNewest),
+      ..._todos.where((t) => t.isDone).toList()..sort(byNewest),
+    ];
+  }
+
   Iterable<Todo> _filtered(Iterable<Todo> source) {
     final now = DateTime.now();
     final today = Todo.dayOf(now);
