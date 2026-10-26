@@ -145,6 +145,8 @@ flutter build web
 node tool/serve_web.js      # http://localhost:8080 (pass a port to change it)
 ```
 
+Every push to `main` deploys the web build to [dayloom-int.vercel.app](https://dayloom-int.vercel.app) through [`.github/workflows/web.yml`](.github/workflows/web.yml). It needs a `VERCEL_TOKEN` repository secret, which you create at [vercel.com/account/tokens](https://vercel.com/account/tokens).
+
 ### Release builds
 
 Pushing a tag like `v1.2.0` runs [`.github/workflows/release.yml`](.github/workflows/release.yml). It runs the checks, builds a signed APK and App Bundle, and publishes them as a GitHub Release. You can also run it by hand from the Actions tab. A manual run only uploads the files as a workflow artifact.
