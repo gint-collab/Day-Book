@@ -145,6 +145,26 @@ flutter build web
 node tool/serve_web.js      # http://localhost:8080 (pass a port to change it)
 ```
 
+### Release builds
+
+Pushing a tag like `v1.2.0` runs [`.github/workflows/release.yml`](.github/workflows/release.yml). It runs the checks, builds a signed APK and App Bundle, and publishes them as a GitHub Release. You can also run it by hand from the Actions tab. A manual run only uploads the files as a workflow artifact.
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Signing reads `android/key.properties`, which is gitignored. CI writes that file from four repository secrets: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD`. To sign locally, create the file yourself:
+
+```properties
+storeFile=/absolute/path/to/upload-keystore.jks
+storePassword=...
+keyAlias=upload
+keyPassword=...
+```
+
+If the file is missing, release builds fall back to the debug key, so `flutter run --release` still works on a fresh clone.
+
 ### Regenerate the icon and splash screen
 
 The source art is drawn in code by `tool/branding/generate_branding_test.dart`, based on the references in `design/reference/`.
